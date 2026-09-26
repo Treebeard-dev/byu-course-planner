@@ -110,19 +110,42 @@ class CoursedogAdapter(CatalogAdapter):
 
     @staticmethod
     def _prereq_group_ids(raw: dict[str, Any]) -> list[str]:
-        """Pull the courseGroupIds a course lists as prerequisites."""
+        """Pull the courseGroupIds a course lists as prerequisites.
+
+        Coursedog nests these differently from school to school (sometimes a
+        list of objects, sometimes plain strings), so we walk the structure
+        recursively and collect anything that looks like a course id (contains a
+        digit), ignoring logic keywords like "and"/"or".
+        """
         ids: list[str] = []
+
+        def collect(node: Any) -> None:
+            if isinstance(node, str):
+                if node not in ("and", "or") and any(ch.isdigit() for ch in node):
+                    ids.append(node)
+            elif isinstance(node, list):
+                for item in node:
+                    collect(item)
+            elif isinstance(node, dict):
+                for key in ("values", "value", "subSelections"):
+                    if key in node:
+                        collect(node[key])
+
         req = raw.get("requisites") or {}
         for block in (req.get("requisitesSimple") or []):
             if block.get("type") != "Prerequisite":
                 continue
             for rule in block.get("rules", []):
-                value = rule.get("value", {}) or {}
-                for grp in value.get("values", []) or []:
-                    for gid in grp.get("value", []) or []:
-                        if gid:
-                            ids.append(gid)
-        return ids
+                collect(rule.get("value"))
+
+        # de-duplicate, preserve order
+        seen: set[str] = set()
+        unique: list[str] = []
+        for gid in ids:
+            if gid not in seen:
+                seen.add(gid)
+                unique.append(gid)
+        return unique
 
     # -- public: normalized courses ------------------------------------------
     def fetch_courses(self, subject: Optional[str] = None) -> list[Course]:

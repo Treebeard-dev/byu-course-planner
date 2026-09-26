@@ -10,7 +10,7 @@ Format:
 
 ## Setup
 
-- **Terminal** —
+- **Terminal** — the text window where I type commands to my computer. Claude Code runs its commands in one, but the terminal itself is separate; any program can use it. _(2026-09-26)_
 - **Repository (repo)** —
 - **Git** —
 - **Commit** —
