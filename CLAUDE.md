@@ -182,11 +182,14 @@ normal.
 
 ## Current status
 
-**Phase 1 — Scrape one department (building).** Recon done + multi-university
-feasibility confirmed (3 platforms cover all 6 target schools; see "Data sources
-& scaling"). Building the Coursedog adapter + `fetch_courses.py`; first output is
-BYU Accounting (`ACC`) into `data/`, with prerequisite IDs resolved to codes.
-Next platforms (Kuali, CourseLeaf) after BYU is proven end-to-end.
+**Phase 2 — Database (in progress).** Done: Coursedog adapter proven on BYU
+(57 ACC) *and* University of Utah (76 ACCTG) with only a config entry; SQLite
+schema + `build_db.py` loader; data loaded into `data/courses.db` scoped by
+university; normalized `year_level` for cross-school class standing.
+Next in Phase 2: add the Accounting major's *requirements* (what you must take to
+graduate), then expand data to GE + 2–3 more departments.
 
-(Phase 0 complete except pasting the Anthropic API key into `.env`, which isn't
-needed until Phase 3.)
+Later: Kuali (Boise State) + CourseLeaf (UVU, ISU) adapters; USU catalog_id;
+term-offerings ("When Taught") source.
+
+(Phase 0 complete except the Anthropic API key in `.env`, needed from Phase 3.)
