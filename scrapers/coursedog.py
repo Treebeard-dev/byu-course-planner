@@ -109,36 +109,29 @@ class CoursedogAdapter(CatalogAdapter):
         return val, (cmin if variable else None), (cmax if variable else None)
 
     @staticmethod
-    def _prereq_group_ids(raw: dict[str, Any]) -> list[str]:
-        """Pull the courseGroupIds a course lists as prerequisites.
+    def _collect_ids(node: Any) -> list[str]:
+        """Recursively pull course-group ids out of a Coursedog rule value.
 
         Coursedog nests these differently from school to school (sometimes a
-        list of objects, sometimes plain strings), so we walk the structure
-        recursively and collect anything that looks like a course id (contains a
-        digit), ignoring logic keywords like "and"/"or".
+        list of objects, sometimes plain strings), so we walk the structure and
+        collect anything that looks like a course id (contains a digit), ignoring
+        logic keywords like "and"/"or". De-duplicated, order preserved.
         """
         ids: list[str] = []
 
-        def collect(node: Any) -> None:
-            if isinstance(node, str):
-                if node not in ("and", "or") and any(ch.isdigit() for ch in node):
-                    ids.append(node)
-            elif isinstance(node, list):
-                for item in node:
-                    collect(item)
-            elif isinstance(node, dict):
+        def walk(n: Any) -> None:
+            if isinstance(n, str):
+                if n not in ("and", "or") and any(ch.isdigit() for ch in n):
+                    ids.append(n)
+            elif isinstance(n, list):
+                for item in n:
+                    walk(item)
+            elif isinstance(n, dict):
                 for key in ("values", "value", "subSelections"):
-                    if key in node:
-                        collect(node[key])
+                    if key in n:
+                        walk(n[key])
 
-        req = raw.get("requisites") or {}
-        for block in (req.get("requisitesSimple") or []):
-            if block.get("type") != "Prerequisite":
-                continue
-            for rule in block.get("rules", []):
-                collect(rule.get("value"))
-
-        # de-duplicate, preserve order
+        walk(node)
         seen: set[str] = set()
         unique: list[str] = []
         for gid in ids:
@@ -146,6 +139,18 @@ class CoursedogAdapter(CatalogAdapter):
                 seen.add(gid)
                 unique.append(gid)
         return unique
+
+    def _prereq_group_ids(self, raw: dict[str, Any]) -> list[str]:
+        """The courseGroupIds a course lists as prerequisites."""
+        ids: list[str] = []
+        req = raw.get("requisites") or {}
+        for block in (req.get("requisitesSimple") or []):
+            if block.get("type") != "Prerequisite":
+                continue
+            for rule in block.get("rules", []):
+                ids.extend(self._collect_ids(rule.get("value")))
+        seen: set[str] = set()
+        return [g for g in ids if not (g in seen or seen.add(g))]
 
     # -- public: normalized courses ------------------------------------------
     def fetch_courses(self, subject: Optional[str] = None) -> list[Course]:
@@ -207,3 +212,71 @@ class CoursedogAdapter(CatalogAdapter):
                 catalog_year=self.catalog_id,
             ))
         return courses
+
+    # -- program requirements -------------------------------------------------
+    def _course_lookup(self) -> dict[str, str]:
+        """courseGroupId -> code, cached so we only pull the catalog once."""
+        if not hasattr(self, "_gid_cache"):
+            self._gid_cache = {
+                r.get("courseGroupId"): self._code_for(r)
+                for r in self._fetch_raw()
+                if r.get("courseGroupId")
+            }
+        return self._gid_cache
+
+    def fetch_program(self, program_id: str) -> dict[str, Any]:
+        """Fetch one program's requirements, resolved to real course codes.
+
+        Returns a normalized dict. Course-list rules become resolved code lists;
+        freeform/grade/timing rules are kept as human-readable notes rather than
+        parsed (see CLAUDE.md: we plan, we do not run a full degree audit).
+        """
+        url = f"{API_ROOT}/{self.school_id}/programs/{program_id}"
+        resp = self.session.get(url, params={"catalogId": self.catalog_id}, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        if isinstance(data, dict) and isinstance(data.get("data"), dict):
+            data = data["data"]
+
+        lookup = self._course_lookup()
+        requirements: list[dict[str, Any]] = []
+
+        req = data.get("requisites") or {}
+        for block in (req.get("requisitesSimple") or []):
+            group = block.get("name") or "Requirement"
+            for rule in block.get("rules", []):
+                cond = rule.get("condition")
+                if cond == "freeformText":
+                    requirements.append({
+                        "group": group,
+                        "condition": "note",
+                        "courses": [],
+                        "choose_n": None,
+                        "note": (rule.get("value") or "").strip(),
+                    })
+                    continue
+                value = rule.get("value") or {}
+                codes = [lookup[g] for g in self._collect_ids(value) if g in lookup]
+                # "choose at least X" stores the threshold in `restriction`
+                # (typically a credit-hour minimum for completedAtLeastXOf).
+                choose_n = rule.get("restriction")
+                requirements.append({
+                    "group": group,
+                    "condition": cond or "",
+                    "courses": codes,
+                    "choose_n": choose_n,
+                    "note": "",
+                })
+
+        name = (data.get("name") or "").strip()
+        degree = (data.get("degreeDesignation") or "").strip()
+        display_name = f"{name} {degree}".strip() if degree and degree not in name else name
+
+        return {
+            "university": self.university,
+            "program_id": program_id,
+            "name": display_name,
+            "degree": degree,
+            "type": data.get("type") or "",
+            "requirements": requirements,
+        }

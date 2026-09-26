@@ -30,6 +30,14 @@ def load_course_files() -> list[dict]:
     ]
 
 
+def load_program_files() -> list[dict]:
+    """Every fetched program file, e.g. byu_accounting_program.json."""
+    return [
+        json.loads(p.read_text(encoding="utf-8"))
+        for p in sorted(DATA_DIR.glob("*_program.json"))
+    ]
+
+
 def build() -> None:
     DATA_DIR.mkdir(exist_ok=True)
     if DB_PATH.exists():
@@ -77,6 +85,45 @@ def build() -> None:
                 )
                 n_prereqs += 1
 
+    # -- programs & their requirements ---------------------------------------
+    n_programs = n_reqrows = 0
+    for prog in load_program_files():
+        uni = prog["university"]
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO programs (university, name, degree_type) VALUES (?,?,?)",
+            (uni, prog["name"], prog.get("degree") or prog.get("type") or ""),
+        )
+        row = conn.execute(
+            "SELECT id FROM programs WHERE university=? AND name=?",
+            (uni, prog["name"]),
+        ).fetchone()
+        program_id = row[0]
+        n_programs += 1
+
+        for req in prog["requirements"]:
+            group = req.get("group")
+            cond = req.get("condition")
+            choose_n = req.get("choose_n")
+            note = req.get("note") or ""
+            courses = req.get("courses") or []
+            if courses:
+                for code in courses:
+                    conn.execute(
+                        """INSERT INTO program_requirements
+                           (program_id, requirement_group, condition, course_code,
+                            choose_n, notes) VALUES (?,?,?,?,?,?)""",
+                        (program_id, group, cond, code, choose_n, ""),
+                    )
+                    n_reqrows += 1
+            else:  # a freeform note rule
+                conn.execute(
+                    """INSERT INTO program_requirements
+                       (program_id, requirement_group, condition, course_code,
+                        choose_n, notes) VALUES (?,?,?,?,?,?)""",
+                    (program_id, group, cond, None, None, note),
+                )
+                n_reqrows += 1
+
     conn.commit()
 
     # quick report
@@ -86,6 +133,7 @@ def build() -> None:
     ):
         print(f"  {row[0]}: {row[1]} courses")
     print(f"  total courses: {n_courses}, prerequisite edges: {n_prereqs}")
+    print(f"  programs: {n_programs}, requirement rows: {n_reqrows}")
     conn.close()
 
 

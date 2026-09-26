@@ -1,0 +1,76 @@
+{
+  "university": "byu",
+  "program_id": "34574-2026-09-02",
+  "name": "Accounting BS",
+  "degree": "BS",
+  "type": "MAJOR",
+  "requirements": [
+    {
+      "group": "Requirement 1",
+      "condition": "completedAllOf",
+      "courses": [
+        "ACC 200",
+        "IS 201",
+        "ACC 310"
+      ],
+      "choose_n": null,
+      "note": ""
+    },
+    {
+      "group": "Requirement 2",
+      "condition": "note",
+      "courses": [],
+      "choose_n": null,
+      "note": "A.)  A minimum of a B grade is required in ACC 200 and ACC 310 to apply.\nB.)  Students can begin accounting major courses only Fall semester."
+    },
+    {
+      "group": "Requirement 3",
+      "condition": "completedAtLeastXOf",
+      "courses": [
+        "ECON 110",
+        "ACC 241",
+        "IS 110",
+        "MKTG 201",
+        "FIN 201"
+      ],
+      "choose_n": 6,
+      "note": ""
+    },
+    {
+      "group": "Requirement 4",
+      "condition": "completedAllOf",
+      "courses": [
+        "ACC 401",
+        "ACC 402",
+        "ACC 403",
+        "ACC 504",
+        "ACC 405",
+        "ACC 406",
+        "ACC 407",
+        "ACC 408",
+        "ACC 409"
+      ],
+      "choose_n": null,
+      "note": ""
+    },
+    {
+      "group": "Requirement 5",
+      "condition": "completedAllOf",
+      "courses": [
+        "FIN 402",
+        "STRAT 392",
+        "HRM 391",
+        "PSE 571"
+      ],
+      "choose_n": null,
+      "note": ""
+    },
+    {
+      "group": "Requirement 5",
+      "condition": "note",
+      "courses": [],
+      "choose_n": null,
+      "note": "Note: If completing the MAcc, these courses will be replaced by MAcc courses."
+    }
+  ]
+}

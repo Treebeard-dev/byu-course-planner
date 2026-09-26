@@ -65,8 +65,11 @@ CREATE TABLE IF NOT EXISTS programs (
 CREATE TABLE IF NOT EXISTS program_requirements (
     id                INTEGER PRIMARY KEY AUTOINCREMENT,
     program_id        INTEGER NOT NULL REFERENCES programs(id),
-    requirement_group TEXT,         -- e.g. "Core", "Electives"
-    course_code       TEXT,         -- a specific required course (nullable)
+    requirement_group TEXT,         -- e.g. "Requirement 1", "Core"
+    condition         TEXT,         -- e.g. completedAllOf / completedAtLeastXOf / note
+    course_code       TEXT,         -- a candidate/required course (nullable for notes)
     choose_n          INTEGER,      -- for "choose N from this group"
-    notes             TEXT
+    notes             TEXT          -- freeform rule text (grades, timing, ...)
 );
+
+CREATE INDEX IF NOT EXISTS idx_progreq_program ON program_requirements (program_id);

@@ -39,6 +39,16 @@ UNIVERSITIES: dict[str, dict] = {
 }
 
 
+# Known degree programs we want requirements for, per school.
+# (program ids come from each catalog's programs API)
+PROGRAMS: dict[str, dict[str, dict]] = {
+    "byu": {
+        "accounting": {"id": "34574-2026-09-02", "name": "Accounting BS"},
+    },
+    # "utah": {"accounting": {"id": "...", "name": "Accounting BS"}},
+}
+
+
 def get_adapter(university_key: str):
     """Build the right adapter for a school key like 'byu'."""
     key = university_key.lower()
