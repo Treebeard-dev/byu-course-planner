@@ -182,12 +182,15 @@ normal.
 
 ## Current status
 
-**Phase 2 — Database (in progress).** Done: Coursedog adapter proven on BYU
-(57 ACC) *and* University of Utah (76 ACCTG) with only a config entry; SQLite
-schema + `build_db.py` loader; data loaded into `data/courses.db` scoped by
-university; normalized `year_level` for cross-school class standing.
-Next in Phase 2: add the Accounting major's *requirements* (what you must take to
-graduate), then expand data to GE + 2–3 more departments.
+**Phase 2 — Database (data foundation done).** BYU full catalog loaded (7,676
+active courses, every college) + Utah ACCTG (76) into `data/courses.db`, scoped by
+university, with normalized `year_level`. Accounting BS requirements loaded and
+all 21 required courses resolve. Course identity = `(university, source_id)`
+because "topic" courses (e.g. MUSIC 360R) share one code across distinct classes.
+
+**Known gap:** we have every GE *course*, but not yet which GE *requirement* each
+one satisfies — the recommender needs that mapping to fill GE slots.
+Next: Phase 3 (career skills maps) / Phase 4 (validator + recommender).
 
 Later: Kuali (Boise State) + CourseLeaf (UVU, ISU) adapters; USU catalog_id;
 term-offerings ("When Taught") source.

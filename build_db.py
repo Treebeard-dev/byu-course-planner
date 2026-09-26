@@ -62,7 +62,7 @@ def build() -> None:
             seen_universities.add(uni)
 
         for c in payload["courses"]:
-            conn.execute(
+            cur = conn.execute(
                 """INSERT OR IGNORE INTO courses
                    (university, code, subject, number, title, credits,
                     credits_min, credits_max, level, year_level, description,
@@ -75,15 +75,15 @@ def build() -> None:
                  c["career"], c["status"], c["source_id"], c["fetched_at"],
                  c["catalog_year"]),
             )
-            n_courses += 1
+            n_courses += cur.rowcount   # 0 when a duplicate was ignored
 
             for prereq in c["prerequisites"]:
-                conn.execute(
+                cur = conn.execute(
                     """INSERT OR IGNORE INTO prerequisites
                        (university, course_code, prereq_code) VALUES (?,?,?)""",
                     (uni, c["code"], prereq),
                 )
-                n_prereqs += 1
+                n_prereqs += cur.rowcount
 
     # -- programs & their requirements ---------------------------------------
     n_programs = n_reqrows = 0

@@ -34,9 +34,12 @@ CREATE TABLE IF NOT EXISTS courses (
     source_id    TEXT,              -- platform's internal id (provenance)
     fetched_at   TEXT,              -- when the data was pulled
     catalog_year TEXT,
-    UNIQUE (university, code)       -- same code can exist at different schools
+    -- Identity is the platform's own id, NOT the code: "topic" courses share one
+    -- code across many distinct classes (e.g. MUSIC 360R = Cello, Bass, ...).
+    UNIQUE (university, source_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_courses_uni_code    ON courses (university, code);
 CREATE INDEX IF NOT EXISTS idx_courses_uni_subject ON courses (university, subject);
 CREATE INDEX IF NOT EXISTS idx_courses_uni_level   ON courses (university, level);
 
