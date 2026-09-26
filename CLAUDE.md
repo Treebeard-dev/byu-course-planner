@@ -74,10 +74,35 @@ correctness is needed.**
 
 **Stack:** Python, SQLite, Claude Agent SDK / Anthropic API, Streamlit, GitHub.
 
-**Open questions to check early:** whether BYU's catalog has an API or export
-(it may run on Coursedog or Acalog), whether scraping is allowed (robots.txt and
-terms), and where term offerings live, since the class schedule may be separate
-from the catalog.
+## Data source (confirmed in Phase 1 recon, 2026-09-26)
+
+BYU's catalog (`catalog.byu.edu`) runs on **Coursedog** and is backed by a
+**public JSON API** — no HTML scraping needed.
+
+- **Course search endpoint:**
+  `https://app.coursedog.com/api/v1/cm/byu/courses/search/$filters`
+- **School id:** `byu` · **Catalog id:** `SDA0rZZwClSdh47nMnGv`
+- **Params:** `skip`/`limit` (paginate), `orderBy`, `columns` (comma-list of
+  fields), `catalogId`. Full catalog is **~7,969 courses**.
+- **Auth:** none, but the API is gated by headers — send
+  `Origin: https://catalog.byu.edu` and `Referer: https://catalog.byu.edu/`
+  (a bare request returns 401). No `robots.txt` at either host (both 404).
+  Be polite: reasonable page sizes, small delay between requests.
+- **Useful columns:** `name`, `longName`, `subjectCode` (e.g. `ACC` for
+  Accounting), `courseNumber`, `code`, `credits.creditHours`, `description`,
+  `college`, `departments`, `career`, `status`, `requisites`,
+  `customFields.rawCourseId`, `customFields.crseOfferNbr`.
+- **Prerequisites:** structured, under `requisites.requisitesSimple[]` (rule
+  `type`, `condition` like `completedAllOf`, `and`/`or` logic, and a list of
+  required course IDs). **Wrinkle:** prereqs reference courses by an internal id
+  (e.g. `"00011-009"`), not by code — pull all courses and build an id→code
+  lookup to resolve them.
+- **Data hygiene:** filter to `status == "Active"` and drop obvious test rows
+  (e.g. names containing "Test").
+- **Still to check:** where term offerings live (which terms a course is
+  actually taught) — the class schedule may be a separate source from the
+  catalog (BYU has an official Developer Portal API for schedules, but it needs
+  OAuth credentials).
 
 ## Build phases
 
@@ -110,4 +135,10 @@ normal.
 
 ## Current status
 
-**Phase 0 — Setup.** In progress.
+**Phase 1 — Scrape one department.** Recon done: found the Coursedog JSON API
+(see "Data source" above), confirmed access and that prerequisites are available.
+Next: write the Python fetcher to pull Accounting (`ACC`) courses into
+`data/courses.json` and resolve prerequisite IDs to codes.
+
+(Phase 0 complete except pasting the Anthropic API key into `.env`, which isn't
+needed until Phase 3.)
