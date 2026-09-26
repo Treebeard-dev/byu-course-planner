@@ -46,11 +46,17 @@ semesters**, based on their major, target career or interests, and year in
 school.
 
 The student:
-1. Enters major, target career or interests, and year (freshman–senior).
-2. Sees two semester columns of recommended courses, each with a one-line
+1. **Picks their university first.** A student attends exactly one school, so
+   this scopes everything that follows — a Utah student never sees BYU courses.
+2. Enters major, target career or interests, and year (freshman–senior).
+3. Sees two semester columns of recommended courses, each with a one-line
    "why this course" reason.
-3. Checks off courses already taken. The plan re-runs: a replacement appears,
+4. Checks off courses already taken. The plan re-runs: a replacement appears,
    and courses that needed the completed one as a prerequisite can unlock.
+
+**Scoping rule (important):** every course is tagged with its university, and
+every query, recommendation, and requirement is filtered to the selected school.
+The data is multi-university; each *session* is single-university.
 
 **Quality bar:** every recommendation must be defensible. No anatomy for an
 accounting student, but a logic or ethics course that builds complementary

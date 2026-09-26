@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 import requests
 
-from .base import Course, CatalogAdapter, level_from_number
+from .base import Course, CatalogAdapter, level_from_number, class_year_from_number
 
 API_ROOT = "https://app.coursedog.com/api/v1/cm"
 
@@ -189,6 +189,7 @@ class CoursedogAdapter(CatalogAdapter):
                 credits_min=cmin,
                 credits_max=cmax,
                 level=level_from_number(number),
+                year_level=class_year_from_number(number),
                 description=(r.get("description") or "").strip(),
                 college=(r.get("college") or "").strip(),
                 department=", ".join(

@@ -25,7 +25,8 @@ class Course:
     credits: Optional[float]   # credit hours (nominal value)
     credits_min: Optional[float] = None   # set when credits are variable
     credits_max: Optional[float] = None
-    level: Optional[int] = None           # 100/200/300... derived from number
+    level: Optional[int] = None           # school-native: 200 (BYU) or 2100 (Utah)
+    year_level: Optional[int] = None      # normalized standing: 1=fr..4=sr, 5+=grad
     description: str = ""
     college: str = ""
     department: str = ""
@@ -57,6 +58,21 @@ def level_from_number(number: str) -> Optional[int]:
         return None
     n = int(digits)
     return (n // 100) * 100
+
+
+def class_year_from_number(number: str) -> Optional[int]:
+    """Normalize a course number to a class standing that means the same thing
+    at every school: the leading digit. BYU 200 -> 2, Utah 2100 -> 2 (both
+    sophomore); BYU 500 -> 5, Utah 6000 -> 6 (graduate)."""
+    digits = ""
+    for ch in str(number):
+        if ch.isdigit():
+            digits += ch
+        else:
+            break
+    if not digits:
+        return None
+    return int(digits[0])
 
 
 class CatalogAdapter:
