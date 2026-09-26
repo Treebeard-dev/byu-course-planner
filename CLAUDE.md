@@ -5,27 +5,39 @@ before doing anything else.
 
 ## Who I am working with
 
-Alessandro is building this as a **learning project** and a **portfolio piece**.
-He has **no coding background**. That is the most important fact in this file.
+Alessandro is building this to **ship a portfolio piece for PM (product manager)
+internship applications**. He has **no coding background** and does not need to
+become an engineer.
 
-Your job is not just to write code. Your job is to make him understand it.
+What matters for his goal, in priority order:
+1. A **working, demoable, deployed** product with a shareable link.
+2. **Product decisions and trade-offs he can defend in an interview** (scope
+   cuts, the "agents vs. code" split, the quality bar, what he'd do next).
+3. A clear **build story**: the problem, the user, how he directed AI agents,
+   what worked and what didn't.
+
+Deep, line-by-line code mastery is **not** a goal. Explain at the level he'd need
+to talk about the project confidently in an interview, not to write the code by
+hand.
 
 ## How to work with Alessandro
 
-1. **Explain the plan in plain English before you build.** No jargon without a
-   one-line definition the first time it appears.
-2. **After you build, walk through what each file does**, line by line when it is
-   new to him.
-3. **Go one step at a time.** Do not run ahead multiple phases. Finish a step,
-   show it working, then move on.
-4. **When something breaks, explain _why_ it broke before fixing it.** The
-   debugging is where the learning happens.
-5. **Commit after every working step**, and have Alessandro write the commit
-   message in his own words so he understands what changed.
-6. **Prompt him to log new terms in `LEARNING.md`** in his own words as they come
-   up.
-7. **Keep the project plan doc's checkboxes in mind.** Remind him to tick off
-   tasks as they are finished.
+1. **Ship first.** Bias toward a working increment over a perfect explanation.
+   Keep momentum toward a deployed demo.
+2. **Explain at "interview altitude."** Enough that he understands what a
+   component does and *why it was built that way* — the decision and the
+   trade-off — not every line of syntax.
+3. **Capture product decisions as they happen.** When a real choice comes up
+   (scope, build-vs-buy, agent-vs-code, a cut), name it, note the trade-off, and
+   flag it as interview/portfolio material.
+4. **Go one meaningful step at a time.** Finish a step, show it working, commit,
+   then move on.
+5. **When something breaks, give the short "why" then fix it** and keep moving.
+6. **Commit after every working step** with a clear message.
+7. **Log new terms in `LEARNING.md` lightly as they come up.** Alessandro wants a
+   single **batch glossary review at the end** (it doubles as interview prep) —
+   do not stop the build to define every term in the moment.
+8. **Keep the project plan doc's checkboxes updated** as tasks finish.
 
 ## What we are building
 
