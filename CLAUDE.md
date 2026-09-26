@@ -56,8 +56,9 @@ The student:
 accounting student, but a logic or ethics course that builds complementary
 skills is welcome.
 
-**Scope:** BYU only. Next two semesters only. Not a replacement for an academic
-advisor.
+**Scope:** Build BYU end-to-end first, but design every data-facing piece to
+**scale to many universities** (see "Data sources & scaling" below). Next two
+semesters only. Not a replacement for an academic advisor.
 
 ## Architecture
 
@@ -74,35 +75,64 @@ correctness is needed.**
 
 **Stack:** Python, SQLite, Claude Agent SDK / Anthropic API, Streamlit, GitHub.
 
-## Data source (confirmed in Phase 1 recon, 2026-09-26)
+## Data sources & scaling (confirmed in Phase 1 recon, 2026-09-26)
 
-BYU's catalog (`catalog.byu.edu`) runs on **Coursedog** and is backed by a
-**public JSON API** — no HTML scraping needed.
+**Key finding:** university catalogs cluster onto a handful of vendor platforms.
+Six target schools resolve to just **three platforms**. So we build one
+**adapter per platform** (not per school); each new school is a small config
+entry. This is the core scalability decision.
 
-- **Course search endpoint:**
-  `https://app.coursedog.com/api/v1/cm/byu/courses/search/$filters`
-- **School id:** `byu` · **Catalog id:** `SDA0rZZwClSdh47nMnGv`
-- **Params:** `skip`/`limit` (paginate), `orderBy`, `columns` (comma-list of
-  fields), `catalogId`. Full catalog is **~7,969 courses**.
-- **Auth:** none, but the API is gated by headers — send
-  `Origin: https://catalog.byu.edu` and `Referer: https://catalog.byu.edu/`
-  (a bare request returns 401). No `robots.txt` at either host (both 404).
-  Be polite: reasonable page sizes, small delay between requests.
-- **Useful columns:** `name`, `longName`, `subjectCode` (e.g. `ACC` for
-  Accounting), `courseNumber`, `code`, `credits.creditHours`, `description`,
-  `college`, `departments`, `career`, `status`, `requisites`,
-  `customFields.rawCourseId`, `customFields.crseOfferNbr`.
-- **Prerequisites:** structured, under `requisites.requisitesSimple[]` (rule
-  `type`, `condition` like `completedAllOf`, `and`/`or` logic, and a list of
-  required course IDs). **Wrinkle:** prereqs reference courses by an internal id
-  (e.g. `"00011-009"`), not by code — pull all courses and build an id→code
-  lookup to resolve them.
-- **Data hygiene:** filter to `status == "Active"` and drop obvious test rows
-  (e.g. names containing "Test").
-- **Still to check:** where term offerings live (which terms a course is
-  actually taught) — the class schedule may be a separate source from the
-  catalog (BYU has an official Developer Portal API for schedules, but it needs
-  OAuth credentials).
+| School | Platform | Access | IDs / URLs |
+|--------|----------|--------|-----------|
+| BYU | Coursedog | JSON API | `schoolId=byu`, `catalogId=SDA0rZZwClSdh47nMnGv` |
+| University of Utah | Coursedog | JSON API | `schoolId=utah_peoplesoft`, `catalogId=Qv3fMzzbHWUO6lkzqwgg` |
+| Utah State (USU) | Coursedog | JSON API | `schoolId=usu` (banner-backed) |
+| Boise State | Kuali | JSON API | host `boisestate.kuali.co`, `catalogId=68d5535c7e5bba5930769e2d` |
+| Utah Valley (UVU) | CourseLeaf | HTML per subject | `catalog.uvu.edu/courses/<subj>/` (e.g. `/courses/acc/`) |
+| Idaho State (ISU) | CourseLeaf | HTML per subject | `coursecat.isu.edu/...` |
+
+### Coursedog (BYU, Utah, USU) — easiest
+- Endpoint: `https://app.coursedog.com/api/v1/cm/<schoolId>/courses/search/$filters`
+- Params: `catalogId`, `skip`/`limit` (paginate), `orderBy`, `columns` (comma
+  list). BYU full catalog ≈ 7,969 courses.
+- **Auth:** none, but gated by headers — send `Origin` and `Referer` set to the
+  school's catalog host (a bare request returns 401). No `robots.txt` (404).
+- Useful columns: `name`, `longName`, `subjectCode`, `courseNumber`, `code`,
+  `credits.creditHours`, `description`, `college`, `departments`, `career`,
+  `status`, `requisites`, `customFields.rawCourseId`.
+- **Prerequisites:** structured under `requisites.requisitesSimple[]` (rule
+  `type`, `condition` e.g. `completedAllOf`, `and`/`or`, list of required course
+  IDs). Wrinkle: prereqs reference an internal course id (e.g. `"00011-009"`),
+  not the code — pull all courses and build an id→code lookup.
+
+### Kuali (Boise State) — easy
+- All courses in one call: `https://<host>.kuali.co/api/v1/catalog/courses/<catalogId>`
+  (returns a big JSON array; fields `__catalogCourseId`, `title`, `subjectCode`,
+  `pid`, `id`).
+- Per-course detail (incl. requisites): `.../catalog/course/<catalogId>/<pid>`.
+
+### CourseLeaf / Modern Campus (UVU, ISU) — moderate
+- No JSON API. Course data is well-structured HTML in `<div class="courseblock">`
+  on per-subject pages, e.g. `catalog.uvu.edu/courses/<subj>/` (UVU Accounting
+  page = 96 course blocks). Parse with BeautifulSoup. A per-course "ribbit"
+  endpoint exists (`/ribbit/index.cgi?page=getcourse.rjs&code=...`) but needs
+  exact codes.
+
+**Etiquette (all platforms):** reasonable page sizes, a small delay between
+requests, a clear User-Agent. Cache raw responses so re-runs don't re-hit.
+
+### Adapter architecture
+- `scrapers/base.py` — a `Course` shape + `CatalogAdapter` interface all
+  adapters return (normalized: university, code, subject, number, title,
+  credits, description, level, prerequisites, status, raw).
+- `scrapers/coursedog.py`, `scrapers/kuali.py`, `scrapers/courseleaf.py` — one
+  per platform (Coursedog built first; the others when needed).
+- `universities.py` — registry mapping a school key (e.g. `byu`) to its platform
+  + IDs/URLs.
+- `fetch_courses.py` — CLI: `python fetch_courses.py byu --subject ACC`.
+
+**Still to check:** term offerings (which terms a course is actually taught) —
+often a separate source from the catalog.
 
 ## Build phases
 
@@ -126,6 +156,17 @@ Each phase is a GitHub milestone. Commit after every working step.
 **Expect friction in Phase 1.** Catalog sites are messy. Getting stuck there is
 normal.
 
+## Product backlog / considerations (Alessandro's, to design for now, build later)
+
+- **Analytics / metrics:** track what users search (major, career, year) and
+  where they drop off, to learn demand and improve recommendations. Design the
+  data model so events are easy to log later; actual dashboard is post-app.
+- **Save progress:** let a user save their plan and completed-courses state and
+  return to it (start with a shareable link or local save; accounts later).
+- **Data freshness:** catalogs change slightly year over year. The scraper is
+  **re-runnable per term** — that IS the refresh mechanism. Stamp each data pull
+  with a fetch date + catalog year, and keep raw responses so we can diff.
+
 ## Conventions
 
 - Language: Python. Keep code simple and readable over clever.
@@ -135,10 +176,11 @@ normal.
 
 ## Current status
 
-**Phase 1 — Scrape one department.** Recon done: found the Coursedog JSON API
-(see "Data source" above), confirmed access and that prerequisites are available.
-Next: write the Python fetcher to pull Accounting (`ACC`) courses into
-`data/courses.json` and resolve prerequisite IDs to codes.
+**Phase 1 — Scrape one department (building).** Recon done + multi-university
+feasibility confirmed (3 platforms cover all 6 target schools; see "Data sources
+& scaling"). Building the Coursedog adapter + `fetch_courses.py`; first output is
+BYU Accounting (`ACC`) into `data/`, with prerequisite IDs resolved to codes.
+Next platforms (Kuali, CourseLeaf) after BYU is proven end-to-end.
 
 (Phase 0 complete except pasting the Anthropic API key into `.env`, which isn't
 needed until Phase 3.)
