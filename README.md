@@ -42,6 +42,18 @@ correctness is needed**:
 
 🚧 In development — Phase 0 (setup). See `CLAUDE.md` for the full plan.
 
+## Data sources
+
+- **Course catalogs:** each university's public catalog (BYU and University of
+  Utah via their Coursedog catalog APIs).
+- **Occupations, skills, and knowledge:** This product includes information from
+  the [O\*NET 31.0 Database](https://www.onetcenter.org/database.html) by the
+  U.S. Department of Labor, Employment and Training Administration (USDOL/ETA).
+  Used under the [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+  license. O\*NET is a trademark of USDOL/ETA. We have modified the data
+  (filtered, reshaped, and summarized per occupation). USDOL/ETA has not approved,
+  endorsed, or tested these modifications.
+
 ## Running it locally
 
 ```bash

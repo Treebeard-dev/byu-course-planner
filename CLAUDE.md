@@ -219,8 +219,26 @@ of BYU rules are OR/any-of; `minimumGrade` counts as "completed" (grades
 unknown); "Contact Department" schedules are allowed with a warning (~36% of BYU
 courses), never silently blocked.
 
-**Known gaps:** (1) GE + BYU religion requirements aren't modeled, so
-freshman/sophomore plans are too major-heavy — highest-priority next step.
+**Outcome engine, step 1 (done):** `outcomes/` package. `search(job)` gives
+"Did you mean...?" O*NET candidates (never auto-picks); `profile(codes)` gives the
+job's important knowledge/skills (O*NET importance >= 3.0, deduped by name) and
+in-demand tools (O*NET "In Demand" flag, which filters noise like hospital software
+for accountants); several codes can be blended. Data: `fetch_onet.py` (raw, git-
+ignored) -> `build_onet.py` -> committed `data/onet_occupations.json` (3.1 MB).
+Try: `python job.py "auditor"`. 41 tests passing.
+- All occupations share the same **68 elements** (33 knowledge, 10 basic skills,
+  25 cross-functional) — so step 2 maps 68 elements -> courses once per school.
+- 106 occupations have no ratings in O*NET 31.0, incl. **Financial and Investment
+  Analysts**; they stay searchable and say so rather than guessing.
+- "Product manager" has no O*NET occupation; blend (e.g. Marketing Managers +
+  Computer and Information Systems Managers) until the AI step picks blends.
+
+**Next:** step 2 — AI maps the 68 elements to each school's courses (once,
+cached, human-reviewable). Needs ANTHROPIC_API_KEY in `.env`.
+
+**Known gaps:** (1) GE + BYU religion requirements are out of scope by product
+decision (outcomes-based, not a degree audit); the recommender output must be
+reframed as "top courses for your job" with room left, not a full schedule.
 (2) Admission gates written as freeform notes (e.g. "B in ACC 310 to apply") are
 shown, not enforced. (3) Breadth picks are the same for everyone until the agent
 personalizes them by interests.
