@@ -41,9 +41,23 @@ hand.
 
 ## What we are building
 
-A web app that gives a BYU student a tailored course plan for their **next two
-semesters**, based on their major, target career or interests, and year in
-school.
+**Outcomes-based:** "based on your desired job, these are the classes you should
+consider taking." The target job drives every recommendation; the tool is NOT a
+degree audit or full schedule builder (decided 2026-09-26: GE and religion
+requirements are deliberately out of scope — the school's audit tools own that).
+
+**Input order (decided):** target job FIRST, major OPTIONAL. Undecided students
+are the ones who most need this. Job → skills/knowledge comes from **O\*NET**
+(U.S. Dept. of Labor, CC BY 4.0 — must credit "O*NET 31.0 Database, U.S.
+Department of Labor, Employment and Training Administration" and note
+modifications). Skills → courses is where the agent's judgment is used.
+
+**Output:** per semester, the few courses that matter most for the target job
+(plus complementary breadth), each with a reason — explicitly leaving room for
+the student's own GE/religion courses. Not a filled 15-credit schedule.
+
+Original framing, kept for context: a web app that gives a student a tailored
+course plan for their **next two semesters**.
 
 The student:
 1. **Picks their university first.** A student attends exactly one school, so

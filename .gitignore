@@ -10,6 +10,9 @@ __pycache__/
 venv/
 env/
 
+# Raw O*NET downloads (~25 MB; re-download with fetch_onet.py)
+data/onet/
+
 # Databases (generated data)
 *.db
 *.sqlite
