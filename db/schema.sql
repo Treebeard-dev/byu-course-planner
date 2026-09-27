@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS courses (
     department   TEXT,
     career       TEXT,
     status       TEXT,
+    typically_offered TEXT,         -- catalog wording, e.g. "Fall and Winter"
+    prereq_tree  TEXT,              -- JSON logic tree (all/any/atleast); source of truth
     source_id    TEXT,              -- platform's internal id (provenance)
     fetched_at   TEXT,              -- when the data was pulled
     catalog_year TEXT,

@@ -33,9 +33,15 @@ class Course:
     career: str = ""           # e.g. Undergraduate / Graduate
     status: str = ""           # e.g. Active
 
-    # Prerequisites, resolved to real course codes where possible.
-    prerequisites: list[str] = field(default_factory=list)   # e.g. ["ACC 200"]
-    prerequisites_text: str = ""                             # readable summary
+    # Prerequisites. `prereq_tree` is the source of truth (see PrereqTree below);
+    # the flat list and text are derived from it for display and graph queries.
+    prereq_tree: Optional[dict] = None
+    prerequisites: list[str] = field(default_factory=list)   # every code mentioned
+    prerequisites_text: str = ""                             # e.g. "ACC 305 or ACC 310"
+
+    # When the course is usually taught, as the catalog words it
+    # (e.g. "Fall and Winter", "Winter Odd Years", "Contact Department").
+    typically_offered: str = ""
 
     # Provenance / for scaling + freshness.
     source_id: str = ""        # the platform's internal id for this course
@@ -73,6 +79,73 @@ def class_year_from_number(number: str) -> Optional[int]:
     if not digits:
         return None
     return int(digits[0])
+
+
+# --- Prerequisite trees -------------------------------------------------------
+#
+# Real prerequisites are logic, not lists: "ACC 305 or ACC 310", "(A and B) or C",
+# "at least 2 of these 5". Every adapter converts its platform's format into this
+# one neutral shape:
+#
+#   node := "ACC 200"                                   (a course code)
+#         | {"op": "all",     "items": [node, ...]}     (every item required)
+#         | {"op": "any",     "items": [node, ...]}     (one item is enough)
+#         | {"op": "atleast", "n": 2, "items": [...]}   (n items required)
+
+
+def make_node(op: str, items: list, n: Optional[int] = None):
+    """Build a node, dropping empties and collapsing trivial nesting."""
+    items = [i for i in items if i]
+    if not items:
+        return None
+    if op in ("all", "any") and len(items) == 1:
+        return items[0]
+    node: dict[str, Any] = {"op": op, "items": items}
+    if op == "atleast":
+        node["n"] = n or 1
+    return node
+
+
+def tree_codes(node) -> list[str]:
+    """Every course code mentioned in a tree (order kept, no duplicates)."""
+    out: list[str] = []
+    def walk(n):
+        if isinstance(n, str):
+            if n not in out:
+                out.append(n)
+        elif isinstance(n, dict):
+            for i in n.get("items", []):
+                walk(i)
+    walk(node)
+    return out
+
+
+def tree_text(node, top: bool = True) -> str:
+    """Readable form, e.g. 'ACC 200 and (ACC 305 or ACC 310)'."""
+    if node is None:
+        return ""
+    if isinstance(node, str):
+        return node
+    parts = [tree_text(i, top=False) for i in node["items"]]
+    if node["op"] == "atleast":
+        text = f"{node['n']} of: " + ", ".join(parts)
+    else:
+        text = f" {'and' if node['op'] == 'all' else 'or'} ".join(parts)
+    return text if top else f"({text})"
+
+
+def tree_satisfied(node, done: set[str]) -> bool:
+    """Is this prerequisite tree satisfied by the set of completed codes?"""
+    if node is None:
+        return True
+    if isinstance(node, str):
+        return node in done
+    results = [tree_satisfied(i, done) for i in node["items"]]
+    if node["op"] == "all":
+        return all(results)
+    if node["op"] == "any":
+        return any(results)
+    return sum(results) >= node.get("n", 1)   # atleast
 
 
 class CatalogAdapter:

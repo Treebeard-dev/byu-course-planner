@@ -66,14 +66,15 @@ def build() -> None:
                 """INSERT OR IGNORE INTO courses
                    (university, code, subject, number, title, credits,
                     credits_min, credits_max, level, year_level, description,
-                    college, department, career, status, source_id, fetched_at,
-                    catalog_year)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    college, department, career, status, typically_offered,
+                    prereq_tree, source_id, fetched_at, catalog_year)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (uni, c["code"], c["subject"], c["number"], c["title"],
                  c["credits"], c["credits_min"], c["credits_max"], c["level"],
                  c["year_level"], c["description"], c["college"], c["department"],
-                 c["career"], c["status"], c["source_id"], c["fetched_at"],
-                 c["catalog_year"]),
+                 c["career"], c["status"], c.get("typically_offered", ""),
+                 json.dumps(c.get("prereq_tree")) if c.get("prereq_tree") else None,
+                 c["source_id"], c["fetched_at"], c["catalog_year"]),
             )
             n_courses += cur.rowcount   # 0 when a duplicate was ignored
 

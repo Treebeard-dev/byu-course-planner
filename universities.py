@@ -17,6 +17,11 @@ UNIVERSITIES: dict[str, dict] = {
         "school_id": "byu",
         "catalog_id": "SDA0rZZwClSdh47nMnGv",
         "catalog_host": "https://catalog.byu.edu",
+        # Planning rules. "semesters" = the main terms and the month each starts;
+        # BYU's Spring/Summer are short optional terms, so they aren't planned.
+        "semesters": {"Winter": 1, "Fall": 9},
+        "full_time_credits": 12,
+        "max_credits": 18,
     },
     "utah": {
         "name": "University of Utah",
@@ -24,6 +29,9 @@ UNIVERSITIES: dict[str, dict] = {
         "school_id": "utah_peoplesoft",
         "catalog_id": "Qv3fMzzbHWUO6lkzqwgg",
         "catalog_host": "https://catalog.utah.edu",
+        "semesters": {"Spring": 1, "Fall": 8},
+        "full_time_credits": 12,
+        "max_credits": 18,
     },
     "usu": {
         "name": "Utah State University",
@@ -31,6 +39,9 @@ UNIVERSITIES: dict[str, dict] = {
         "school_id": "usu",
         "catalog_id": "",   # TODO: confirm USU catalogId (banner-backed)
         "catalog_host": "https://catalog.usu.edu",
+        "semesters": {"Spring": 1, "Fall": 8},
+        "full_time_credits": 12,
+        "max_credits": 18,
     },
     # --- other platforms, adapters to be added later ---
     # "boisestate": {"platform": "kuali", ...},

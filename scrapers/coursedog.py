@@ -11,13 +11,17 @@ its Origin/Referer headers. We:
 
 from __future__ import annotations
 
+import re
 import time
 from datetime import date
 from typing import Any, Optional
 
 import requests
 
-from .base import Course, CatalogAdapter, level_from_number, class_year_from_number
+from .base import (
+    Course, CatalogAdapter, level_from_number, class_year_from_number,
+    make_node, tree_codes, tree_text,
+)
 
 API_ROOT = "https://app.coursedog.com/api/v1/cm"
 
@@ -25,8 +29,16 @@ API_ROOT = "https://app.coursedog.com/api/v1/cm"
 COLUMNS = ",".join([
     "name", "longName", "subjectCode", "courseNumber", "code",
     "credits.creditHours", "description", "college", "departments",
-    "career", "status", "requisites", "courseGroupId",
+    "career", "status", "requisites", "courseGroupId", "courseTypicallyOffered",
 ])
+
+# Some rules list a literal code ("ACC 305") instead of an internal id.
+CODE_PATTERN = re.compile(r"^[A-Z][A-Z &]{0,8} \d{2,4}[A-Z]?$")
+
+ANY_CONDITIONS = {"anyOf", "completedAnyOf"}
+# "minimumGrade" = must complete these courses with at least grade X. We can't see
+# grades, so we treat it as "must have completed" (Utah uses it for most prereqs).
+ALL_CONDITIONS = {"allOf", "completedAllOf", "minimumGrade"}
 
 
 class CoursedogAdapter(CatalogAdapter):
@@ -140,17 +152,70 @@ class CoursedogAdapter(CatalogAdapter):
                 unique.append(gid)
         return unique
 
-    def _prereq_group_ids(self, raw: dict[str, Any]) -> list[str]:
-        """The courseGroupIds a course lists as prerequisites."""
-        ids: list[str] = []
+    @staticmethod
+    def _resolve(item: Any, lookup: dict[str, str]) -> Optional[str]:
+        """An internal id or a literal code -> a course code (None if unknown)."""
+        if not isinstance(item, str):
+            return None
+        if item in lookup:
+            return lookup[item]
+        item = item.strip()
+        return item if CODE_PATTERN.match(item) else None
+
+    def _resolve_all(self, node: Any, lookup: dict[str, str]) -> list[str]:
+        codes = [self._resolve(i, lookup) for i in self._collect_ids(node)]
+        out: list[str] = []
+        for c in codes:
+            if c and c not in out:
+                out.append(c)
+        return out
+
+    def _rule_to_node(self, rule: dict[str, Any], lookup: dict[str, str]):
+        """Convert one Coursedog rule (possibly nested) into a prereq tree node."""
+        cond = rule.get("condition")
+
+        # Nested rules: "anyOf" / "allOf" with subRules, each its own rule.
+        if rule.get("subRules"):
+            kids = [self._rule_to_node(s, lookup) for s in rule["subRules"]]
+            return make_node("any" if cond in ANY_CONDITIONS else "all", kids)
+
+        # Not about completed courses (enrolledIn = corequisite, minimumCredits):
+        # we can't evaluate these from a course list, so they don't gate planning.
+        if cond not in ANY_CONDITIONS | ALL_CONDITIONS | {"completedAtLeastXOf"}:
+            return None
+
+        value = rule.get("value") or {}
+        groups = value.get("values") if isinstance(value, dict) else None
+        group_nodes = []
+        for g in groups or []:
+            if isinstance(g, dict):
+                codes = self._resolve_all(g.get("value"), lookup)
+                group_nodes.append(make_node("any" if g.get("logic") == "or" else "all", codes))
+            else:
+                group_nodes.append(self._resolve(g, lookup))
+        mentioned = tree_codes(make_node("all", group_nodes))
+
+        if cond in ANY_CONDITIONS:
+            return make_node("any", mentioned)
+        if cond == "completedAtLeastXOf":
+            n = rule.get("restriction") or 1
+            # `restriction` is sometimes a credit count; if it exceeds the number
+            # of options, read it as credits (~3 per course).
+            if n > len(mentioned):
+                n = max(1, -(-int(n) // 3))
+            return make_node("atleast", mentioned, n)
+        return make_node("all", group_nodes)
+
+    def _prereq_tree(self, raw: dict[str, Any], lookup: dict[str, str]):
+        """A course's full prerequisite tree (all prerequisite rules must hold)."""
+        nodes = []
         req = raw.get("requisites") or {}
         for block in (req.get("requisitesSimple") or []):
             if block.get("type") != "Prerequisite":
                 continue
             for rule in block.get("rules", []):
-                ids.extend(self._collect_ids(rule.get("value")))
-        seen: set[str] = set()
-        return [g for g in ids if not (g in seen or seen.add(g))]
+                nodes.append(self._rule_to_node(rule, lookup))
+        return make_node("all", nodes)
 
     # -- public: normalized courses ------------------------------------------
     def fetch_courses(self, subject: Optional[str] = None) -> list[Course]:
@@ -178,10 +243,7 @@ class CoursedogAdapter(CatalogAdapter):
                 continue
 
             val, cmin, cmax = self._credits(r)
-            prereq_codes = [
-                gid_to_code[g] for g in self._prereq_group_ids(r)
-                if g in gid_to_code
-            ]
+            tree = self._prereq_tree(r, gid_to_code)
             number = str(r.get("courseNumber") or "").strip()
 
             courses.append(Course(
@@ -203,10 +265,10 @@ class CoursedogAdapter(CatalogAdapter):
                 ),
                 career=(r.get("career") or "").strip(),
                 status=(r.get("status") or "").strip(),
-                prerequisites=prereq_codes,
-                prerequisites_text=(
-                    ", ".join(prereq_codes) if prereq_codes else ""
-                ),
+                prereq_tree=tree,
+                prerequisites=tree_codes(tree),
+                prerequisites_text=tree_text(tree),
+                typically_offered=(r.get("courseTypicallyOffered") or "").strip(),
                 source_id=r.get("courseGroupId") or "",
                 fetched_at=today,
                 catalog_year=self.catalog_id,
@@ -256,7 +318,7 @@ class CoursedogAdapter(CatalogAdapter):
                     })
                     continue
                 value = rule.get("value") or {}
-                codes = [lookup[g] for g in self._collect_ids(value) if g in lookup]
+                codes = self._resolve_all(value, lookup)
                 # "choose at least X" stores the threshold in `restriction`
                 # (typically a credit-hour minimum for completedAtLeastXOf).
                 choose_n = rule.get("restriction")

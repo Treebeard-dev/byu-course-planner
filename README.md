@@ -44,4 +44,19 @@ correctness is needed**:
 
 ## Running it locally
 
-_Instructions will be added as the app takes shape._
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt   # macOS/Linux: .venv/bin/python
+
+python fetch_courses.py byu              # pull the catalog (re-run each term to refresh)
+python fetch_program.py byu accounting   # pull the Accounting BS requirements
+python build_db.py                       # load everything into data/courses.db
+
+python plan.py byu --program "Accounting BS" --year 2 --completed "ACC 200,WRTG 150"
+python -m pytest -q
+```
+
+Example output (BYU sophomore): Winter finishes the pre-major plus *Logic & Critical
+Thinking*; Fall starts the junior accounting core plus *Public Speaking*. Every
+plan is checked by the validator for prerequisites, term availability, and credit
+limits.

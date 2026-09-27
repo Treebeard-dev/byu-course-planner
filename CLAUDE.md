@@ -188,9 +188,28 @@ university, with normalized `year_level`. Accounting BS requirements loaded and
 all 21 required courses resolve. Course identity = `(university, source_id)`
 because "topic" courses (e.g. MUSIC 360R) share one code across distinct classes.
 
-**Known gap:** we have every GE *course*, but not yet which GE *requirement* each
-one satisfies — the recommender needs that mapping to fill GE slots.
-Next: Phase 3 (career skills maps) / Phase 4 (validator + recommender).
+**Phase 4 (done before Phase 3, by decision):** `planner/` package.
+- `validator.py` — deterministic: prereqs completed in an EARLIER term, offered
+  that term, credit limit, duplicates/completed; warnings for unknown schedule,
+  level vs standing, grad-level, under full-time.
+- `recommender.py` — rules baseline: requirement groups in catalog order
+  (pre-major first), critical-path ordering within a group, choose-N groups in
+  place, >=1 breadth course/semester from `complements.py` (hand-picked
+  placeholder the Phase 3 agent must beat). Self-validates its output.
+- Run: `python plan.py byu --program "Accounting BS" --year 2 --completed "ACC 200"`;
+  check a plan with `--check "Winter 2027: A, B | Fall 2027: C"`.
+- Tests: `python -m pytest -q` (26 passing).
+
+Data decisions made here: prereqs are logic trees (`scrapers/base.py`), since ~20%
+of BYU rules are OR/any-of; `minimumGrade` counts as "completed" (grades
+unknown); "Contact Department" schedules are allowed with a warning (~36% of BYU
+courses), never silently blocked.
+
+**Known gaps:** (1) GE + BYU religion requirements aren't modeled, so
+freshman/sophomore plans are too major-heavy — highest-priority next step.
+(2) Admission gates written as freeform notes (e.g. "B in ACC 310 to apply") are
+shown, not enforced. (3) Breadth picks are the same for everyone until the agent
+personalizes them by interests.
 
 Later: Kuali (Boise State) + CourseLeaf (UVU, ISU) adapters; USU catalog_id;
 term-offerings ("When Taught") source.
